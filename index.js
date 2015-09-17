@@ -79,8 +79,10 @@ return async.auto({
                 // do smarter checks here later, for now just check if ID exists in state to ignore it
                 if (expense.deleted_at) return false;
                 return !stateMap[expense.id];
+
+                //return true;
             })
-            .sortBy('-created_at')
+            .sortBy('created_at')
             .map(function(expense) {
                 var currency = cMap[expense.currency_code].unit;
                 var description, payload;
@@ -161,6 +163,7 @@ return async.auto({
         });
     }],
     sendToSlack: ['formatPayload', function(next, args) {
+        //return next(null, args.formatPayload);
         return postToSlack(args.formatPayload, next);
     }]
 }, function(err, data) {
