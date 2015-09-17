@@ -2,6 +2,9 @@
     "splitwiseSession": "extract the _splitwise_session from your web browser cookies",
     "slack": {
         "channel": "#test",
-        "webhookUrl": "put your webhook url here"
-    }
+        "webhookUrl": "put your slack webhook url here"
+    },
+    "stateFilePath": "./state.json",
+    "timezone": "America/Chicago",
+    "dateformat": "dddd MMM DD \\a\\t hh:mm"
 }

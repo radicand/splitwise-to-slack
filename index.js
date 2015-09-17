@@ -2,6 +2,7 @@ var async = require('async');
 var _ = require('lodash');
 var request = require('request');
 var fs = require('fs');
+var moment = require('moment-timezone');
 var settings = require('./settings.json');
 
 var j = request.jar();
@@ -86,8 +87,9 @@ return async.auto({
             .map(function(expense) {
                 var currency = cMap[expense.currency_code].unit;
                 var description, payload;
+                var expenseDate = moment.tz(expense.date, settings.timezone).format(settings.dateformat);
                 if (expense.creation_method === 'payment') {
-                    description = 'A payment of ' + currency + expense.cost + ' was recorded at ' + expense.date;
+                    description = 'A payment of ' + currency + expense.cost + ' was recorded on ' + expenseDate;
                     payload = {
                         channel: settings.slack.channel,
                         text: '*'+description+'*',
@@ -112,7 +114,7 @@ return async.auto({
                     var creator = expense.created_by.first_name + ' ' + expense.created_by
                         .last_name;
                     description = creator + ' added a ' + currency + expense.cost +
-                        ' receipt for ' + expense.description + ' on ' + expense.date;
+                        ' receipt for ' + expense.description + ' on ' + expenseDate;
                     payload = {
                         channel: settings.slack.channel,
                         text: '*'+description+'*',
