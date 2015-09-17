@@ -1,6 +1,7 @@
 var async = require('async');
 var _ = require('lodash');
 var request = require('request');
+var fs = require('fs');
 var settings = require('./settings.json');
 
 var j = request.jar();
@@ -8,6 +9,10 @@ var cookie = request.cookie('_splitwise_session=' + settings.splitwiseSession);
 j.setCookie(cookie, 'https://secure.splitwise.com/');
 
 var postToSlack = function(payload, done) {
+    if (_.isArray(payload)) {
+        return async.each(payload, postToSlack, done);
+    }
+
     return request({
         method: 'post',
         url: settings.slack.webhookUrl,
@@ -27,6 +32,15 @@ return async.auto({
             return next(err, body);
         });
     },
+    currencies: function (next) {
+        return request({
+            url: 'https://secure.splitwise.com/api/v3.0/get_currencies',
+            jar: j,
+            json: true
+        }, function(err, resp, body) {
+            return next(err, body);
+        });
+    },
     group: function(next) {
         return request({
             url: 'https://secure.splitwise.com/api/v3.0/get_groups',
@@ -36,13 +50,42 @@ return async.auto({
             return next(err, body);
         });
     },
-    formatPayload: ['expenses', 'group', function(next, args) {
+    readState: function (next) {
+        return fs.readFile(settings.stateFilePath, function (err, str) {
+            if (err) {
+                if (err.code === 'ENOENT') {
+                    console.log('State file does not exist, will create it on completion');
+                    return next();
+                }
+                return next(err);
+            }
+
+            try {
+                return next(null, JSON.parse(str));
+            } catch (e) {
+                console.warn('Unable to parse state file, perhaps corrupted');
+                return next(e);
+            }
+        });
+    },
+    formatPayload: ['expenses', 'group', 'currencies', 'readState', function(next, args) {
+        var cMap = _.indexBy(args.currencies.currencies, 'currency_code');
+        var stateMap = {};
+        if (args.readState) {
+            stateMap = _.indexBy(args.readState.expenses, 'id');
+        }
         var out = _.chain(args.expenses.expenses)
+            .filter(function (expense) {
+                // do smarter checks here later, for now just check if ID exists in state to ignore it
+                return !stateMap[expense.id];
+            })
             .sortBy('-created_at')
             .map(function(expense) {
+                var currency = cMap[expense.currency_code].unit;
                 var creator = expense.created_by.first_name + ' ' + expense.created_by
                     .last_name;
-                var description = creator + ' added a receipt for ' + expense.description;
+                var description = creator + ' added a ' + currency + expense.cost +
+                    ' receipt for ' + expense.description;
                 var payload = {
                     channel: settings.slack.channel,
                     text: '*'+description+'*',
@@ -54,8 +97,8 @@ return async.auto({
                                 return {
                                     title: user.user.first_name + ' ' + user.user.last_name,
                                     value: (parseFloat(user.paid_share) > 0.0) ?
-                                        ('Paid ' + user.paid_share + ' and is owed ' + user.net_balance) :
-                                        ('Owes ' + user.owed_share),
+                                        ('Paid ' + currency + user.paid_share + ' and is owed ' + currency + user.net_balance) :
+                                        ('Owes ' + currency + user.owed_share),
                                     short: true
                                 };
                             })
@@ -79,10 +122,16 @@ return async.auto({
 
                 return payload;
             })
-            .first()
             .value();
 
         return next(null, out);
+    }],
+    saveState: ['expenses', 'formatPayload', function (next, args) {
+        return fs.writeFile(settings.stateFilePath, JSON.stringify(args.expenses), function (err) {
+            if (err) return next(err);
+
+            return next();
+        });
     }],
     sendToSlack: ['formatPayload', function(next, args) {
         return postToSlack(args.formatPayload, next);
