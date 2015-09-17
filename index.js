@@ -82,42 +82,68 @@ return async.auto({
             .sortBy('-created_at')
             .map(function(expense) {
                 var currency = cMap[expense.currency_code].unit;
-                var creator = expense.created_by.first_name + ' ' + expense.created_by
-                    .last_name;
-                var description = creator + ' added a ' + currency + expense.cost +
-                    ' receipt for ' + expense.description;
-                var payload = {
-                    channel: settings.slack.channel,
-                    text: '*'+description+'*',
-                    attachments: [{
-                        fallback: description,
-                        color: '#D00000',
-                        fields: _.chain(expense.users)
-                            .map(function (user) {
+                var description, payload;
+                if (expense.creation_method === 'payment') {
+                    description = 'A payment of ' + currency + expense.cost + ' was recorded at ' + expense.date;
+                    payload = {
+                        channel: settings.slack.channel,
+                        text: '*'+description+'*',
+                        attachments: [{
+                            fallback: description,
+                            color: '#00D000',
+                            fields: _.chain(expense.users)
+                                .map(function (user) {
+                                    return {
+                                        title: user.user.first_name + ' ' + user.user.last_name,
+                                        value: (parseFloat(user.paid_share) > 0.0) ?
+                                            ('Paid ' + currency + user.paid_share) :
+                                            ('Received ' + currency + user.owed_share),
+                                        short: true
+                                    };
+                                })
+                                .value()
+                        }]
+                    };
+
+                } else {
+                    var creator = expense.created_by.first_name + ' ' + expense.created_by
+                        .last_name;
+                    description = creator + ' added a ' + currency + expense.cost +
+                        ' receipt for ' + expense.description + ' on ' + expense.date;
+                    payload = {
+                        channel: settings.slack.channel,
+                        text: '*'+description+'*',
+                        attachments: [{
+                            fallback: description,
+                            color: '#D00000',
+                            fields: _.chain(expense.users)
+                                .map(function (user) {
+                                    return {
+                                        title: user.user.first_name + ' ' + user.user.last_name,
+                                        value: (parseFloat(user.paid_share) > 0.0) ?
+                                            ('Paid ' + currency + user.paid_share +
+                                                ' and is owed ' + currency + user.net_balance) :
+                                            ('Owes ' + currency + user.owed_share),
+                                        short: true
+                                    };
+                                })
+                                .value()
+                        }]
+                    };
+
+                    if (expense.details) {
+                        payload.attachments.unshift({
+                            fallback: 'Details',
+                            color: '#00D000',
+                            fields: _.map(expense.details.split('\n\r'), function (detail) {
                                 return {
-                                    title: user.user.first_name + ' ' + user.user.last_name,
-                                    value: (parseFloat(user.paid_share) > 0.0) ?
-                                        ('Paid ' + currency + user.paid_share + ' and is owed ' + currency + user.net_balance) :
-                                        ('Owes ' + currency + user.owed_share),
-                                    short: true
+                                    title: 'Detail',
+                                    value: detail,
+                                    short: false
                                 };
                             })
-                            .value()
-                    }]
-                };
-
-                if (expense.details) {
-                    payload.attachments.unshift({
-                        fallback: 'Details',
-                        color: '#00D000',
-                        fields: _.map(expense.details.split('\n\r'), function (detail) {
-                            return {
-                                title: 'Detail',
-                                value: detail,
-                                short: false
-                            };
-                        })
-                    });
+                        });
+                    }
                 }
 
                 return payload;
