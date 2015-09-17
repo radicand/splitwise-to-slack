@@ -1,0 +1,7 @@
+{
+    "splitwiseSession": "extract the _splitwise_session from your web browser cookies",
+    "slack": {
+        "channel": "#test",
+        "webhookUrl": "put your webhook url here"
+    }
+}
