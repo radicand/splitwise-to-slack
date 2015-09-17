@@ -77,6 +77,7 @@ return async.auto({
         var out = _.chain(args.expenses.expenses)
             .filter(function (expense) {
                 // do smarter checks here later, for now just check if ID exists in state to ignore it
+                if (expense.deleted_at) return false;
                 return !stateMap[expense.id];
             })
             .sortBy('-created_at')
