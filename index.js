@@ -148,10 +148,10 @@ return async.auto({
                     if (expense.details) {
                         payload.attachments.push({
                             fallback: 'Details',
-                            color: '#00D000',
+                            color: '#bebebe',
                             fields: _.map(expense.details.split('\n\r'), function (detail) {
                                 return {
-                                    title: 'Detail',
+                                    title: 'Details',
                                     value: detail,
                                     short: false
                                 };
