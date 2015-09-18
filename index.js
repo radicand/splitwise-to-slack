@@ -149,13 +149,11 @@ return async.auto({
                         payload.attachments.push({
                             fallback: 'Details',
                             color: '#bebebe',
-                            fields: _.map(expense.details.split('\n\r'), function (detail) {
-                                return {
-                                    title: 'Details',
-                                    value: detail,
-                                    short: false
-                                };
-                            })
+                            fields: [{
+                                title: 'Details',
+                                value: expense.details,
+                                short: false
+                            }]
                         });
                     }
                 }
