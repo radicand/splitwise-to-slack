@@ -88,12 +88,16 @@ return async.auto({
                 var currency = cMap[expense.currency_code].unit;
                 var description, payload;
                 var expenseDate = moment.tz(expense.date, settings.timezone).format(settings.dateformat);
+                var creator = expense.created_by.first_name + ' ' + expense.created_by
+                    .last_name;
                 if (expense.creation_method === 'payment') {
                     description = 'A payment of ' + currency + expense.cost + ' was recorded on ' + expenseDate;
                     payload = {
                         channel: settings.slack.channel,
-                        text: '*'+description+'*',
                         attachments: [{
+                            title: currency + expense.cost + ' paid back on ' + expenseDate,
+                            title_link: 'https://secure.splitwise.com/#/groups/' + expense.group_id,
+                            pretext: 'New payment added by ' + creator,
                             fallback: description,
                             color: '#00D000',
                             fields: _.chain(expense.users)
@@ -109,16 +113,15 @@ return async.auto({
                                 .value()
                         }]
                     };
-
                 } else {
-                    var creator = expense.created_by.first_name + ' ' + expense.created_by
-                        .last_name;
                     description = creator + ' added a ' + currency + expense.cost +
                         ' receipt for ' + expense.description + ' on ' + expenseDate;
                     payload = {
                         channel: settings.slack.channel,
-                        text: '*'+description+'*',
                         attachments: [{
+                            title: currency + expense.cost + ' for ' + expense.description + ' on ' + expenseDate,
+                            title_link: 'https://secure.splitwise.com/#/groups/' + expense.group_id,
+                            pretext: 'New receipt added by ' + creator,
                             fallback: description,
                             color: '#D00000',
                             fields: _.chain(expense.users)
@@ -137,7 +140,7 @@ return async.auto({
                     };
 
                     if (expense.details) {
-                        payload.attachments.unshift({
+                        payload.attachments.push({
                             fallback: 'Details',
                             color: '#00D000',
                             fields: _.map(expense.details.split('\n\r'), function (detail) {
