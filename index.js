@@ -95,9 +95,12 @@ return async.auto({
                     payload = {
                         channel: settings.slack.channel,
                         attachments: [{
+                            author_name: creator,
+                            author_icon: (expense.created_by.picture ?
+                                expense.created_by.picture.medium : undefined),
                             title: currency + expense.cost + ' paid back on ' + expenseDate,
                             title_link: 'https://secure.splitwise.com/#/groups/' + expense.group_id,
-                            pretext: 'New payment added by ' + creator,
+                            pretext: 'New payment added',
                             fallback: description,
                             color: '#00D000',
                             fields: _.chain(expense.users)
@@ -119,9 +122,12 @@ return async.auto({
                     payload = {
                         channel: settings.slack.channel,
                         attachments: [{
+                            author_name: creator,
+                            author_icon: (expense.created_by.picture ?
+                                expense.created_by.picture.medium : undefined),
                             title: currency + expense.cost + ' for ' + expense.description + ' on ' + expenseDate,
                             title_link: 'https://secure.splitwise.com/#/groups/' + expense.group_id,
-                            pretext: 'New receipt added by ' + creator,
+                            pretext: 'New receipt added',
                             fallback: description,
                             color: '#D00000',
                             fields: _.chain(expense.users)
